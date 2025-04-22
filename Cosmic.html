@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Canvas | Interactive Digital Art</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Roboto+Mono:wght@300;400;700&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Roboto Mono', monospace;
+            background: #000;
+            color: #fff;
+        }
+        
+        #artCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+        
+        .control-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .title {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            font-family: 'Playfair Display', serif;
+            font-weight: 900;
+            font-size: 3rem;
+            color: white;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            opacity: 0.8;
+            letter-spacing: 5px;
+        }
+        
+        .subtitle {
+            position: fixed;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            font-family: 'Roboto Mono', monospace;
+            font-weight: 300;
+            font-size: 1rem;
+            color: white;
+            text-align: center;
+            opacity: 0.6;
+        }
+        
+        .art-mode {
+            animation: pulse 2s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        
+        .color-picker {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            transition: transform 0.3s ease;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.2);
+        }
+        
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .artwork-counter {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            color: white;
+            opacity: 0.7;
+        }
+        
+        .particle-control {
+            position: fixed;
+            top: 50px;
+            left: 20px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .particle-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .art-save-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .art-save-content {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .art-save-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        
+        .art-save-input {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 15px;
+            border-radius: 10px;
+            color: white;
+            width: 80%;
+            margin-bottom: 20px;
+            font-family: 'Roboto Mono', monospace;
+        }
+        
+        .art-save-btn {
+            background: linear-gradient(45deg, #ff00cc, #3333ff);
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-family: 'Roboto Mono', monospace;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        
+        .art-save-btn.cancel {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .gallery-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .gallery-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px 0;
+            overflow-y: auto;
+        }
+        
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            width: 90%;
+            max-width: 1200px;
+        }
+        
+        .gallery-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .gallery-item:hover {
+            transform: scale(1.03);
+        }
+        
+        .gallery-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .gallery-item-title {
+            padding: 15px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .close-gallery {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+        
+        .no-artworks {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 100px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="artCanvas"></canvas>
+    <div id="particles-js"></div>
+    
+    <div class="title">COSMIC CANVAS</div>
+    <div class="subtitle">YOUR INTERACTIVE DIGITAL ART EXPERIENCE</div>
+    
+    <div class="artwork-counter">ARTWORK #<span id="artworkCount">0</span></div>
+    
+    <div class="particle-control">
+        <button class="particle-toggle" id="toggleParticles">TOGGLE PARTICLES</button>
+        <button class="particle-toggle" id="toggleTrails">TOGGLE TRAILS</button>
+    </div>
+    
+    <div class="color-picker">
+        <div class="color-option" style="background: #ff0000;" data-color="#ff0000"></div>
+        <div class="color-option" style="background: #00ff00;" data-color="#00ff00"></div>
+        <div class="color-option" style="background: #0000ff;" data-color="#0000ff"></div>
+        <div class="color-option" style="background: #ffff00;" data-color="#ffff00"></div>
+        <div class="color-option" style="background: #ff00ff;" data-color="#ff00ff"></div>
+        <div class="color-option" style="background: #00ffff;" data-color="#00ffff"></div>
+        <div class="color-option" style="background: #ffffff;" data-color="#ffffff"></div>
+    </div>
+    
+    <div class="control-panel">
+        <div class="control-btn" id="clearCanvas"><i class="fas fa-trash"></i></div>
+        <div class="control-btn" id="randomMode"><i class="fas fa-random"></i></div>
+        <div class="control-btn" id="spiralMode"><i class="fas fa-spinner"></i></div>
+        <div class="control-btn" id="waveMode"><i class="fas fa-water"></i></div>
+        <div class="control-btn" id="fractalMode"><i class="fas fa-snowflake"></i></div>
+        <div class="control-btn" id="saveArt"><i class="fas fa-save"></i></div>
+    </div>
+    
+    <button class="fullscreen-btn" id="fullscreenBtn"><i class="fas fa-expand"></i></button>
+    
+    <button class="gallery-btn" id="galleryBtn">
+        <i class="fas fa-images"></i> GALLERY
+    </button>
+    
+    <div class="art-save-modal hidden" id="saveModal">
+        <div class="art-save-content">
+            <div class="art-save-title">SAVE YOUR ARTWORK</div>
+            <input type="text" class="art-save-input" id="artworkName" placeholder="Name your masterpiece...">
+            <div>
+                <button class="art-save-btn" id="confirmSave">SAVE</button>
+                <button class="art-save-btn cancel" id="cancelSave">CANCEL</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="gallery-modal hidden" id="galleryModal">
+        <button class="close-gallery" id="closeGallery">&times;</button>
+        <h2 class="art-save-title">YOUR GALLERY</h2>
+        <div class="gallery-grid" id="galleryGrid">
+            <!-- Gallery items will be added here dynamically -->
+        </div>
+        <div class="no-artworks hidden" id="noArtworks">NO ARTWORKS YET</div>
+    </div>
+    
+    <script>
+        // Initialize variables
+        let canvas, ctx;
+        let particles = [];
+        let mouseX = 0, mouseY = 0;
+        let isDrawing = false;
+        let currentColor = '#ffffff';
+        let currentMode = 'free';
+        let artworkCount = 0;
+        let trailsEnabled = true;
+        
+        // Initialize the canvas
+        function initCanvas() {
+            canvas = document.getElementById('artCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Set canvas to full window size
+            resizeCanvas();
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Initialize particles.js
+            particlesJS('particles-js', {
+                particles: {
+                    number: { value: 80, density: { enable: true, value_area: 800 } },
+                    color: { value: "#ffffff" },
+                    shape: { type: "circle" },
+                    opacity: { value: 0.5, random: true },
+                    size: { value: 3, random: true },
+                    line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.4, width: 1 },
+                    move: { enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out" }
+                },
+                interactivity: {
+                    detect_on: "canvas",
+                    events: {
+                        onhover: { enable: true, mode: "repulse" },
+                        onclick: { enable: true, mode: "push" }
+                    }
+                }
+            });
+            
+            // Start animation loop
+            animate();
+        }
+        
+        // Resize canvas when window is resized
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            window.addEventListener('resize', resizeCanvas);
+            
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            canvas.addEventListener('touchstart', handleTouchStart);
+            canvas.addEventListener('touchmove', handleTouchMove);
+            canvas.addEventListener('touchend', handleTouchEnd);
+            
+            // Color picker
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    currentColor = option.getAttribute('data-color');
+                    document.querySelectorAll('.color-option').forEach(opt => {
+                        opt.style.border = '2px solid rgba(255, 255, 255, 0.2)';
+                    });
+                    option.style.border = '2px solid white';
+                });
+            });
+            
+            // Control buttons
+            document.getElementById('clearCanvas').addEventListener('click', clearCanvas);
+            document.getElementById('randomMode').addEventListener('click', () => setMode('random'));
+            document.getElementById('spiralMode').addEventListener('click', () => setMode('spiral'));
+            document.getElementById('waveMode').addEventListener('click', () => setMode('wave'));
+            document.getElementById('fractalMode').addEventListener('click', () => setMode('fractal'));
+            document.getElementById('saveArt').addEventListener('click', showSaveModal);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            document.getElementById('toggleParticles').addEventListener('click', toggleParticles);
+            document.getElementById('toggleTrails').addEventListener('click', toggleTrails);
+            document.getElementById('galleryBtn').addEventListener('click', showGallery);
+            document.getElementById('closeGallery').addEventListener('click', hideGallery);
+            document.getElementById('confirmSave').addEventListener('click', saveArtwork);
+            document.getElementById('cancelSave').addEventListener('click', hideSaveModal);
+            
+            // Set initial color selection
+            document.querySelector('.color-option[data-color="#ffffff"]').style.border = '2px solid white';
+        }
+        
+        // Touch event handlers
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            mouseX = touch.clientX;
+            mouseY = touch.clientY;
+            isDrawing = true;
+        }
+        
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (!isDrawing) return;
+            const touch = e.touches[0];
+            mouseX = touch.clientX;
+            mouseY = touch.clientY;
+            draw();
+        }
+        
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            isDrawing = false;
+        }
+        
+        // Drawing functions
+        function startDrawing(e) {
+            isDrawing = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        }
+        
+        function draw(e) {
+            if (e) {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            }
+            
+            if (!isDrawing) return;
+            
+            // Create a new particle based on current mode
+            if (currentMode === 'free') {
+                createParticle(mouseX, mouseY, currentColor);
+            } else if (currentMode === 'random') {
+                createRandomParticles();
+            } else if (currentMode === 'spiral') {
+                createSpiralParticles();
+            } else if (currentMode === 'wave') {
+                createWaveParticles();
+            } else if (currentMode === 'fractal') {
+                createFractalParticles();
+            }
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        // Particle creation functions
+        function createParticle(x, y, color) {
+            const particle = {
+                x: x,
+                y: y,
+                color: color,
+                size: Math.random() * 10 + 5,
+                life: 100,
+                vx: Math.random() * 4 - 2,
+                vy: Math.random() * 4 - 2,
+                gravity: 0.1,
+                friction: 0.95
+            };
+            particles.push(particle);
+        }
+        
+        function createRandomParticles() {
+            for (let i = 0; i < 5; i++) {
+                const x = mouseX + (Math.random() * 100 - 50);
+                const y = mouseY + (Math.random() * 100 - 50);
+                const hue = Math.floor(Math.random() * 360);
+                const color = `hsl(${hue}, 100%, 50%)`;
+                createParticle(x, y, color);
+            }
+        }
+        
+        function createSpiralParticles() {
+            const time = Date.now() * 0.001;
+            const radius = 50;
+            const count = 10;
+            
+            for (let i = 0; i < count; i++) {
+                const angle = (i / count) * Math.PI * 2 + time;
+                const x = mouseX + Math.cos(angle) * radius;
+                const y = mouseY + Math.sin(angle) * radius;
+                const hue = (i / count) * 360;
+                const color = `hsl(${hue}, 100%, 50%)`;
+                createParticle(x, y, color);
+            }
+        }
+        
+        function createWaveParticles() {
+            const time = Date.now() * 0.01;
+            const count = 15;
+            const amplitude = 50;
+            const wavelength = 100;
+            
+            for (let i = 0; i < count; i++) {
+                const x = mouseX + (i - count/2) * 10;
+                const y = mouseY + Math.sin(time + i * 0.2) * amplitude;
+                const hue = (i / count) * 360;
+                const color = `hsl(${hue}, 100%, 50%)`;
+                createParticle(x, y, color);
+            }
+        }
+        
+        function createFractalParticles() {
+            const iterations = 3;
+            const angle = Math.PI * 0.25;
+            const scale = 0.7;
+            
+            function createBranch(x, y, dir, depth, color) {
+                if (depth === 0) return;
+                
+                const length = 50 * Math.pow(scale, depth);
+                const newX = x + Math.cos(dir) * length;
+                const newY = y + Math.sin(dir) * length;
+                
+                createParticle(newX, newY, color);
+                
+                createBranch(newX, newY, dir + angle, depth - 1, color);
+                createBranch(newX, newY, dir - angle, depth - 1, color);
+            }
+            
+            const hue = Math.floor(Math.random() * 360);
+            const color = `hsl(${hue}, 100%, 50%)`;
+            createBranch(mouseX, mouseY, -Math.PI/2, iterations, color);
+        }
+        
+        // Animation loop
+        function animate() {
+            if (!trailsEnabled) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            } else {
+                // Fade out effect for trails
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Update and draw particles
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                
+                // Apply physics
+                p.vy += p.gravity;
+                p.vx *= p.friction;
+                p.vy *= p.friction;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                
+                // Draw particle
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * (p.life / 100), 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Remove dead particles
+                if (p.life <= 0 || p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                    particles.splice(i, 1);
+                    i--;
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Control functions
+        function clearCanvas() {
+            particles = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            artworkCount++;
+            document.getElementById('artworkCount').textContent = artworkCount;
+        }
+        
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // Highlight active mode button
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                btn.classList.remove('art-mode');
+            });
+            
+            if (mode === 'random') {
+                document.getElementById('randomMode').classList.add('art-mode');
+            } else if (mode === 'spiral') {
+                document.getElementById('spiralMode').classList.add('art-mode');
+            } else if (mode === 'wave') {
+                document.getElementById('waveMode').classList.add('art-mode');
+            } else if (mode === 'fractal') {
+                document.getElementById('fractalMode').classList.add('art-mode');
+            }
+        }
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                canvas.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        function toggleParticles() {
+            const particlesEl = document.getElementById('particles-js');
+            particlesEl.style.display = particlesEl.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function toggleTrails() {
+            trailsEnabled = !trailsEnabled;
+            document.getElementById('toggleTrails').textContent = trailsEnabled ? 'TOGGLE TRAILS' : 'TRAILS OFF';
+        }
+        
+        // Save artwork functions
+        function showSaveModal() {
+            document.getElementById('saveModal').classList.remove('hidden');
+            document.getElementById('artworkName').focus();
+        }
+        
+        function hideSaveModal() {
+            document.getElementById('saveModal').classList.add('hidden');
+            document.getElementById('artworkName').value = '';
+        }
+        
+        function saveArtwork() {
+            const artworkName = document.getElementById('artworkName').value.trim() || `Artwork ${artworkCount}`;
+            
+            // Create a temporary canvas to capture the current state
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Draw the current canvas to temp canvas
+            tempCtx.fillStyle = 'black';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.drawImage(canvas, 0, 0);
+            
+            // Convert to data URL
+            const dataURL = tempCanvas.toDataURL('image/png');
+            
+            // Save to localStorage
+            const artworks = JSON.parse(localStorage.getItem('cosmicCanvasArtworks') || '[]');
+            artworks.push({
+                name: artworkName,
+                date: new Date().toISOString(),
+                dataURL: dataURL
+            });
+            localStorage.setItem('cosmicCanvasArtworks', JSON.stringify(artworks));
+            
+            hideSaveModal();
+            showGallery();
+        }
+        
+        // Gallery functions
+        function showGallery() {
+            const galleryGrid = document.getElementById('galleryGrid');
+            galleryGrid.innerHTML = '';
+            
+            const artworks = JSON.parse(localStorage.getItem('cosmicCanvasArtworks') || '[]');
+            
+            if (artworks.length === 0) {
+                document.getElementById('noArtworks').classList.remove('hidden');
+            } else {
+                document.getElementById('noArtworks').classList.add('hidden');
+                
+                artworks.forEach((artwork, index) => {
+                    const galleryItem = document.createElement('div');
+                    galleryItem.className = 'gallery-item';
+                    
+                    const img = document.createElement('img');
+                    img.src = artwork.dataURL;
+                    img.alt = artwork.name;
+                    
+                    const title = document.createElement('div');
+                    title.className = 'gallery-item-title';
+                    title.textContent = artwork.name;
+                    
+                    galleryItem.appendChild(img);
+                    galleryItem.appendChild(title);
+                    
+                    galleryItem.addEventListener('click', () => {
+                        loadArtwork(artwork.dataURL);
+                        hideGallery();
+                    });
+                    
+                    galleryGrid.appendChild(galleryItem);
+                });
+            }
+            
+            document.getElementById('galleryModal').classList.remove('hidden');
+        }
+        
+        function hideGallery() {
+            document.getElementById('galleryModal').classList.add('hidden');
+        }
+        
+        function loadArtwork(dataURL) {
+            const img = new Image();
+            img.onload = function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = dataURL;
+        }
+        
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initCanvas);
+    </script>
+</body>
+</html>
